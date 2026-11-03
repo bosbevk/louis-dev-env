@@ -1,0 +1,27 @@
+# Egress allowlist for Claude agent containers.
+# One domain per line. Everything not listed is rejected.
+# '@github' pulls GitHub's published IP ranges from api.github.com/meta.
+# Rebuild the image after editing, or pass extra domains for one session with
+#   Start-ClaudeAgent.ps1 -AllowDomain api.nuget.org,www.nuget.org
+#
+# Source: https://code.claude.com/docs/en/network-config#network-access-requirements
+
+# --- Claude Code (required) ---
+api.anthropic.com
+claude.ai
+claude.com
+platform.claude.com
+downloads.claude.ai
+mcp-proxy.anthropic.com
+code.claude.com
+raw.githubusercontent.com
+
+# --- GitHub (plugin marketplaces, public clones; agents have no push credentials) ---
+@github
+
+# --- Optional: uncomment what your toolchain needs ---
+registry.npmjs.org
+api.nuget.org
+www.nuget.org
+# pypi.org
+# files.pythonhosted.org

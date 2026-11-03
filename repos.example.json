@@ -1,0 +1,36 @@
+{
+  "_help": [
+    "Copy this file to repos.json (Install-ContextMenu.ps1 does this for you) and edit it. repos.json is gitignored.",
+    "'repoRoots' are the folders the repo picker scans for git repositories (up to 'repoScanDepth' levels deep). Environment variables such as %USERPROFILE% are expanded.",
+    "Keys under 'repos' are a full repo path or just the repo folder name (case-insensitive).",
+    "Each start point needs 'label' and 'branch', plus either 'base' (branch/commit to start from)",
+    "or 'pick' (a branch pattern such as 'feature/*' - you choose one of the matching branches).",
+    "Placeholders in 'branch': {name} = agent name, {picked} = chosen branch, {pickedSuffix} = the part matched by '*'.",
+    "'fetch': true fetches the base from origin on the host before creating the worktree.",
+    "'defaultBranch' (global or per repo) names branches for 'Current branch', 'Pick a branch' and 'Type a branch'.",
+    "The first start point is the default (Enter). 'Current branch', 'Pick a branch' and 'Type a branch' are always added."
+  ],
+  "repoRoots": [
+    "C:\\Repositories",
+    "%USERPROFILE%\\source\\repos",
+    "%USERPROFILE%\\RiderProjects"
+  ],
+  "repoScanDepth": 2,
+  "defaultBranch": "agent/{name}",
+  "repos": {
+    "example-service": {
+      "fetch": true,
+      "startPoints": [
+        { "label": "New work from production",    "base": "origin/production", "branch": "work/{name}" },
+        { "label": "Task on an existing feature", "pick": "feature/*",         "branch": "{pickedSuffix}/{name}" },
+        { "label": "New feature from production", "base": "origin/production", "branch": "feature/{name}" }
+      ]
+    },
+    "C:\\Repositories\\another-repo": {
+      "defaultBranch": "dev/{name}",
+      "startPoints": [
+        { "label": "New work from main", "base": "origin/main", "branch": "dev/{name}" }
+      ]
+    }
+  }
+}

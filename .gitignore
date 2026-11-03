@@ -1,0 +1,7 @@
+.worktrees/
+# Personal per-repository config (copy of repos.example.json)
+/repos.json
+.idea/**/workspace.xml
+.idea/**/usage.statistics.xml
+.idea/**/shelf/
+*.user
