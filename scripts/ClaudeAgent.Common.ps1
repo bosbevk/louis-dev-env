@@ -187,6 +187,26 @@ function Remove-AgentMeta([string]$Slug, [string]$Agent) {
     Remove-Item (Join-Path $script:MetaDir "$Slug-$Agent.json") -ErrorAction SilentlyContinue
 }
 
+# Copy gitignored files listed in the repo's .worktreeinclude into a new worktree, the same way
+# Claude Code's --worktree does: only files that match a pattern AND are gitignored are copied,
+# and existing files are never overwritten. Read from the main checkout, which agents cannot edit.
+function Copy-WorktreeIncludes([string]$Root, [string]$WorktreePath) {
+    $inc = Join-Path $Root '.worktreeinclude'
+    if (-not (Test-Path $inc -PathType Leaf)) { return }
+    $ignored = @{}
+    foreach ($f in (& git -C $Root -c core.quotePath=false ls-files --others --ignored --exclude-standard)) { $ignored[$f] = $true }
+    $wanted = @(& git -C $Root -c core.quotePath=false ls-files --others --ignored "--exclude-from=$inc" | Where-Object { $ignored.ContainsKey($_) })
+    $copied = 0
+    foreach ($f in $wanted) {
+        $dst = Join-Path $WorktreePath $f
+        if (Test-Path -LiteralPath $dst) { continue }
+        New-Item -ItemType Directory -Force (Split-Path $dst -Parent) | Out-Null
+        Copy-Item -LiteralPath (Join-Path $Root $f) -Destination $dst
+        $copied++
+    }
+    if ($copied) { Write-Info "Copied $copied gitignored file(s) listed in .worktreeinclude" }
+}
+
 function Get-WorktreeBranch([string]$WorktreePath) {
     $b = & git -C $WorktreePath branch --show-current 2>$null
     if ($LASTEXITCODE -eq 0 -and $b) { return $b.Trim() }

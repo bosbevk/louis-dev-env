@@ -141,6 +141,23 @@ Add a repository by copying the `example-service` block in `repos.json`. The key
 - The agent writes to files that you later open on the host. Review diffs before running build scripts, `.vscode`/`.idea` run configs or `.claude/settings.json` hooks from an agent branch.
 - Firewall IPs are resolved when the container starts. CDN-backed hosts can change IPs during very long sessions. If that happens, restart the agent.
 
+## How this relates to Claude Code's own worktrees
+
+Claude Code has built-in [worktree support](https://code.claude.com/docs/en/worktrees) (`claude --worktree`, subagent `isolation: worktree`). This project follows the same model, one git worktree per parallel session sharing `.git`, and adds a container around each session:
+
+| | Claude Code `--worktree` | This project |
+|---|---|---|
+| Location | `.claude/worktrees/<name>/` | `.worktrees/<name>/`, separate so the two never clash over names |
+| Start point | Default branch or `HEAD` (`worktree.baseRef`); not a named branch | Any branch, per-repo start points, or a branch picker. This is the doc's [manual worktree](https://code.claude.com/docs/en/worktrees#manage-worktrees-manually) route |
+| Isolation | Claude Code blocks edits and git commands aimed at the main checkout | The main checkout isn't mounted into the container at all; the firewall and capabilities apply too |
+| `.worktreeinclude` | Copies listed, gitignored files | Same rules, copied from the main checkout when the worktree is created, and existing files are never overwritten |
+| Locking | Locked while the session runs | Locked while the container runs (`git worktree lock`), unlocked when it exits; Clean up releases stale locks |
+| Cleanup | Prompt on exit, periodic sweep | **Clean up agents...**, which deletes a branch only if the agent created it and it is merged or empty |
+
+Claude can also use `--worktree` or `isolation: worktree` subagents *inside* an agent container. The image sets `worktree.useRelativePaths`, so those nested worktrees stay valid on the host and a host-side `git worktree prune` doesn't remove them. `.claude/worktrees/` is ignored globally in the container.
+
+**Copying local config into agents:** add a `.worktreeinclude` file (same syntax as `.gitignore`) to the repository root, for example `appsettings.Development.json`. Anything you copy is readable by the agent, and the firewall doesn't stop the agent from sending it to allowed domains, so don't list production secrets. The managed policy also denies Claude's Read tool access to `.env`, `*.pem`, `*.key` and similar files.
+
 ## Large repositories
 
 - **Long paths:** the launcher runs git with `core.longpaths=true`, so a worktree under `.worktrees\<name>\` works even when files go past the 260-character Windows limit. Inside the container these are ordinary Linux paths.
@@ -159,5 +176,9 @@ repos.json                     your personal copy (gitignored; created by Instal
 scripts/Start-ClaudeAgent.ps1  launcher (worktree + container)
 scripts/Remove-ClaudeAgent.ps1 cleanup
 scripts/Set-ClaudeToken.ps1    store a setup-token with DPAPI
-scripts/Install-ContextMenu.ps1 Explorer menu (HKCU)
+scripts/Install-ContextMenu.ps1 Explorer menu (HKCU) and Start Menu shortcut
 ```
+
+## License
+
+[MIT](LICENSE) © 2026 Louis Marais

@@ -66,6 +66,8 @@ try {
             $branch = Get-WorktreeBranch $wtPath
             if (-not $branch) { $branch = Get-Prop $meta 'branch' }
             if (Test-Path $wtPath) {
+                # The container is not running (checked above), so any lock left behind is stale.
+                & git -C $root worktree unlock $wt 2>$null
                 $wtArgs = @('-c', 'core.longpaths=true', 'worktree', 'remove') + $(if ($Force) { @('--force') } else { @() }) + @($wt)
                 & git -C $root @wtArgs
                 if ($LASTEXITCODE -ne 0) { Write-Warn '  worktree has uncommitted changes - commit them or use -Force'; continue }

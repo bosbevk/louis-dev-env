@@ -61,12 +61,19 @@ RUN userdel -r ubuntu 2>/dev/null || true \
 #   checkStat/trustctime/untrackedCache - Windows and Linux record different stat data for
 #                     the same files; without these, every `git status` re-reads every file
 #                     (measured: ~4 min -> ~20 s on a 13.5k-file repo)
+#   useRelativePaths - worktrees Claude creates inside the container (claude --worktree,
+#                     subagent isolation: worktree) stay valid on the host, so a host-side
+#                     `git worktree prune` does not delete them
+#   excludesFile    - keeps those .claude/worktrees/ out of `git status`
 RUN git config --system safe.directory '*' \
  && git config --system core.autocrlf input \
  && git config --system core.filemode false \
  && git config --system core.checkStat minimal \
  && git config --system core.trustctime false \
  && git config --system core.untrackedCache true \
+ && git config --system worktree.useRelativePaths true \
+ && printf '.claude/worktrees/\n' > /etc/gitignore-agent \
+ && git config --system core.excludesFile /etc/gitignore-agent \
  && git config --system init.defaultBranch main
 
 # Claude Code (native installer), installed as the agent user.

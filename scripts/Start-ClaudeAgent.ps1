@@ -142,6 +142,7 @@ function Select-StartPoint([string]$Root, [string]$AgentName) {
     return @{ Base = $base; Branch = (Expand-BranchTemplate $template $AgentName $base $base) }
 }
 
+$root = $null; $lockedWt = $null; $exit = 0
 try {
     Assert-Docker
 
@@ -264,6 +265,13 @@ try {
             }
         }
 
+        Copy-WorktreeIncludes $root $wtPath
+
+        # Lock while the container runs (as Claude Code does for its own worktrees), so
+        # `git worktree prune/remove` on the host cannot delete it mid-session.
+        & git -C $root worktree lock --reason "claude-agent: container $container is running" $wtRel 2>$null
+        $lockedWt = if ($LASTEXITCODE -eq 0) { $wtRel } else { $null }
+
         # Same relative layout inside the container so the relative gitdir links resolve.
         $workdir = "/workspace/repo/$wtRel"
         $mounts += '-v', "$($repo.GitDir):/workspace/repo/.git"
@@ -342,6 +350,7 @@ catch {
 }
 finally {
     Remove-Item Env:\CLAUDE_CODE_OAUTH_TOKEN -ErrorAction SilentlyContinue
+    if ($lockedWt -and $root) { & git -C $root worktree unlock $lockedWt 2>$null }
     if (-not $NoPause) { Read-Host 'Press Enter to close' | Out-Null }
 }
 exit $exit
